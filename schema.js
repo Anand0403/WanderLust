@@ -14,6 +14,13 @@ module.exports.listingSchema = Joi.object({
             url: Joi.string()
                 .allow("") // allow empty string
                 .default("https://images.unsplash.com/photo-1552733407-5d5c46c3bb3b")
-        }).default({})
+        }).default({}),
+    }).required()
+});
+
+module.exports.reviewSchema = Joi.object({
+    review: Joi.object({
+        comment: Joi.string().trim().min(1).required(),
+        rating: Joi.number().min(1).required(),
     }).required()
 });

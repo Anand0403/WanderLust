@@ -1,13 +1,21 @@
 const express = require("express");
 const app = express();
 const mongoose = require("mongoose");
-const Listing = require("./models/listing.js");
 const path = require("path");
 const methodOverride = require("method-override");
 const ejsMate = require("ejs-mate");
-const wrapAsync = require("./utils/wrapAsync.js");
 const ExpressError = require("./utils/ExpressError.js");
-const {listingSchema} = require("./schema.js");
+
+const session = require("express-session");
+const flash = require("connect-flash");
+const passport = require("passport");
+const LocalStrategy = require("passport-local");
+const User = require("./models/user.js");
+
+const listingRouter = require("./routes/listing.js");
+const reviewRouter = require("./routes/review.js");
+const userRouter = require("./routes/user.js");
+
 
 
 
@@ -18,6 +26,17 @@ app.use(express.urlencoded({extended: true}));
 app.use(methodOverride("_method"));
 app.use(express.json());
 app.engine("ejs",ejsMate);
+
+const sessionOptions = {
+    secret: "myscretcode",
+    resave: false,
+    saveUninitialized: true,
+    cookie: {
+        expires: Date.now() + 3 * 24 * 60 * 60 * 1000, // The time is in the milliseconds
+        maxAge: 7* 24 * 60 * 60 * 1000,
+        httpOnly: true,
+    }
+};
 
 main().then(() => {
     console.log("Connected to DB");
@@ -33,72 +52,42 @@ app.get("/",(req,res) => {
     res.send("Hi i am root");
 });
 
-// Joi listing Schema validation Middleware
-let validateListing = (req, res, next) => {
-    let {error} = listingSchema.validate(req.body);
+app.use(session(sessionOptions));
+app.use(flash());
 
-    if(error){  
-        let errMsg = error.details.map(el => el.message.replaceAll('"', '')).join(", ");
+app.use(passport.initialize());
+app.use(passport.session());
 
-        console.log(error);
-        console.log(errMsg);
-        throw new ExpressError(400, errMsg);
-    }else{
-        next();
-    }
-};
+//use static authenticate mothod of model in LocalStrategy
+passport.use(new LocalStrategy(User.authenticate()));
 
-//Index Route
-app.get("/listings",wrapAsync(async (req,res) => {
-    const allListings = await Listing.find({});
-    res.render("listings/index.ejs",{allListings});
-}));
+// use static serialize and deserialize of model for session support
+passport.serializeUser(User.serializeUser());
+passport.deserializeUser(User.deserializeUser());
 
-// Create Route (GET -> FORM -> SUBMIT -> POST)
-app.get("/listings/new",(req,res) => {
-    res.render("listings/create.ejs");
+app.use((req, res, next) => {
+    res.locals.success = req.flash("success");
+    res.locals.error  = req.flash("error");
+    res.locals.currUser = req.user;
+    next();
 });
 
-app.post("/listings", validateListing, wrapAsync(async (req,res) => {
+// app.get("/registerUser", async(req, res) => {
+//     let fakeUser = new User({
+//         email:"anand@gmail.com",
+//         username: "Apna college",
+//     });
 
-    let newListing = new Listing(req.body.listing);
-    await newListing.save();
-    res.redirect("/listings");
-}));
+//     //  .register(user, password, cb) -> It is a static method to register the new user instance with given password
+//     let newUser = await User.register(fakeUser, "hello");
+//     res.send(newUser);
+// });
 
-// Show Route
-app.get("/listings/:id",wrapAsync(async (req,res) => {
-    let {id} = req.params;
-    let listing = await Listing.findById(id);
-    res.render("listings/show.ejs",{listing});
-}));
+// Routes
+app.use("/listings", listingRouter);
+app.use("/listings/:id/reviews", reviewRouter);
+app.use("/", userRouter);
 
-// UPDATE (Edit and Update Route)
-app.get("/listings/:id/edit", wrapAsync(async (req,res) => {
-    let {id} = req.params;
-    let listing = await Listing.findById(id);
-    res.render("listings/edit.ejs",{listing});
-}));
-
-app.put("/listings/:id", wrapAsync(async (req, res) => {
-    if(!req.body || !req.body.listing){
-        throw new ExpressError(400, "Send valid data for listing..");
-    }
-    let { id } = req.params;
-    // Spread the listing object to ensure Mongoose picks up nested fields correctly
-    await Listing.findByIdAndUpdate(id, { ...req.body.listing });
-    res.redirect(`/listings/${id}`);
-}));
-
-// Delete Route
-app.delete("/listings/:id",wrapAsync(async (req,res) => {
-    let {id} = req.params;
-    let deleteListing = await Listing.findByIdAndDelete(id);;
-    if(!deleteListing){
-        return res.send("Listing not found");
-    }
-    res.redirect(`/listings`);
-}));
 
 // 404 Error Handler Midlleware
 app.use((req, res, next) => {

@@ -4,6 +4,7 @@ const Listing = require("../models/listing.js");
 
 main().then(() => {
     console.log("Connected to DB");
+    initDB(); // ✅ call after DB connection
 }).catch((err) => {
     console.log(err);
 });
@@ -14,8 +15,7 @@ async function main(){
 
 const initDB = async () => {
     await Listing.deleteMany({});
-    await Listing.insertMany(data);
+    const updatedData = data.map((obj) => ({...obj, owner:"69f0ca92da7a6cbec623fff5"}));
+    await Listing.insertMany(updatedData);
     console.log("Records inserted sucessfully");
 };
-
-initDB();
