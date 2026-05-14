@@ -49,7 +49,7 @@ const store  =  MongoStore.create({
 
 const sessionOptions = {
     store: store,
-    secret: "myscretcode",
+    secret: process.env.SECRET,
     resave: false,
     saveUninitialized: true,
     cookie: {
