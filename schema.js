@@ -7,14 +7,6 @@ module.exports.listingSchema = Joi.object({
         price: Joi.number().required().min(0),
         location: Joi.string().required(),
         country: Joi.string().required(),
-
-        image: Joi.object({
-            filename: Joi.string().default("listingimage"),
-
-            url: Joi.string()
-                .allow("") // allow empty string
-                .default("https://images.unsplash.com/photo-1552733407-5d5c46c3bb3b")
-        }).default({}),
     }).required()
 });
 

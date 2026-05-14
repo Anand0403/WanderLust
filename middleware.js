@@ -1,7 +1,7 @@
 const Listing = require("./models/listing.js");
 const Review = require("./models/reviews.js");
 const ExpressError = require("./utils/ExpressError.js");
-const {listingSchema} = require("./schema.js"); // for Server side ListingSchema  and reviewSchema validation
+const {listingSchema, reviewSchema} = require("./schema.js"); // for Server side ListingSchema  and reviewSchema validation
 
 // Joi listing Schema validation Middleware
 module.exports.validateListing = (req, res, next) => {
@@ -54,7 +54,7 @@ module.exports.isOwner = async(req, res, next) => {
     let {id} = req.params;
     let listing = await Listing.findById(id);
 
-    if(!listing.owner._id.equals(req.user._id)){
+    if(!listing || !listing.owner._id.equals(req.user._id)){
         req.flash("error", "You are not the owner of this listing!");
         return res.redirect(`/listings/${id}`);
     }
@@ -63,9 +63,10 @@ module.exports.isOwner = async(req, res, next) => {
 
 module.exports.isReviewAuthor = async(req, res, next) => {
     let {reviewId} = req.params;
+    let { id } = req.params;
     let review = await Review.findById(reviewId);
 
-    if(!review.author._id.equals(req.user._id)){
+    if(!review || !review.author._id.equals(req.user._id)){
         req.flash("error", "You are not the Author of this review!");
         return res.redirect(`/listings/${id}`);
     }
